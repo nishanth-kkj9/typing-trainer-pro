@@ -1,5 +1,7 @@
 # Typing Trainer Pro
 
+[![CI](https://github.com/nishanth-kkj9/typing-trainer-pro/actions/workflows/ci.yml/badge.svg)](https://github.com/nishanth-kkj9/typing-trainer-pro/actions/workflows/ci.yml)
+
 A professional desktop typing trainer built with PySide6 (Qt for Python).
 
 ## Features

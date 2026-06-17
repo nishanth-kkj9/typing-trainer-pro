@@ -1,1 +1,6 @@
 PySide6>=6.6.0
+pydantic-settings>=2.0
+sqlmodel>=0.0.14
+structlog>=24.0
+tomli-w>=1.0
+rich>=13.0
