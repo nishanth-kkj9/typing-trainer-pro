@@ -31,16 +31,38 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+## Quick start
+
+```bash
+# 1) create venv
+python -m venv venv
+
+# 2) activate (Windows)
+venv\Scripts\activate
+
+# 3) install deps
+pip install -r requirements.txt
+
+# 4) run the app
+python -m typing_trainer.main
+```
+
 ## Running
 
 ```bash
 python -m typing_trainer.main
 ```
 
-Or run directly:
+Or run directly (from repo root):
+
 ```bash
 python src/typing_trainer/main.py
 ```
+
+
+## Configuration
+
+Settings are backed by TOML (see `src/typing_trainer/config/defaults.toml`).
 
 ## Building Executable
 
@@ -54,6 +76,7 @@ python -m PyInstaller --name "TypingTrainerPro" --windowed --onefile \
 
 Output: `dist/TypingTrainerPro.exe`
 
+
 ## Project Structure
 
 ```
@@ -63,15 +86,16 @@ typing_trainer/
 │       ├── __init__.py
 │       ├── __main__.py
 │       ├── main.py                  # App bootstrap, exception handler
-│       ├── config/                  # Pydantic-based settings (persistent TOML)
+│       ├── config/                 # Persistent settings (TOML + pydantic-settings)
 │       │   ├── __init__.py
 │       │   ├── defaults.toml
 │       │   └── settings.py
-│       ├── core/                    # Pure-Python business logic (no Qt)
+│       ├── core/                   # Pure-Python business logic (no Qt)
 │       │   ├── __init__.py
-│       │   ├── typing_engine.py     # Character-level diff with backspace/case support
-│       │   ├── stats_calculator.py  # WPM/CPM/accuracy/consistency/error rates
-│       │   └── sentence_generator.py# Template-based generation with topics & symbols
+│       │   ├── typing_engine.py    # Character-level diff with backspace/case support
+│       │   ├── stats_calculator.py # WPM/CPM/accuracy/consistency/error rates
+│       │   └── sentence_generator.py # Sentence generation (templates / topics / symbols)
+
 │       ├── services/                # Qt-dependent services
 │       │   ├── __init__.py
 │       │   ├── timer_service.py     # Drift-free countdown with pause/resume
@@ -101,11 +125,12 @@ typing_trainer/
 │   └── contributing.md
 ├── assets/                          # Icons, images, themes
 ├── scripts/                         # Build/deploy scripts
-├── .github/workflows/               # CI/CD (lint, test, build, release)
+├── .github/workflows/              # CI/CD (lint, test, build, release)
 ├── pyproject.toml
 ├── requirements.txt
 └── LICENSE
 ```
+
 
 ## Running Tests
 
