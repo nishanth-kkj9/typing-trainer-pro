@@ -20,26 +20,41 @@ Features
 """
 
 import logging
-from pathlib import Path
 from collections import deque
-from typing import Optional
+from pathlib import Path
 
 from PySide6.QtCore import Qt, Slot
-from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QComboBox, QTextEdit, QLineEdit,
-    QApplication, QButtonGroup, QRadioButton, QProgressBar,
-    QFrame, QDialog, QDialogButtonBox, QPlainTextEdit,
-)
 from PySide6.QtGui import (
-    QTextCharFormat, QColor, QFontDatabase, QKeyEvent,
-    QPainter, QPen,
+    QColor,
+    QFontDatabase,
+    QKeyEvent,
+    QPainter,
+    QPen,
+    QTextCharFormat,
+)
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QPlainTextEdit,
+    QProgressBar,
+    QPushButton,
+    QRadioButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
-from typing_trainer.core.typing_engine import TypingEngine, CharStatus
 from typing_trainer.core.sentence_generator import SentenceGenerator
-from typing_trainer.services.timer_service import TimerService
+from typing_trainer.core.typing_engine import CharStatus, TypingEngine
 from typing_trainer.services.stats_tracker import StatsTracker
+from typing_trainer.services.timer_service import TimerService
 from typing_trainer.ui.keyboard_widget import VirtualKeyboard
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -126,9 +141,9 @@ class MainWindow(QMainWindow):
         self.generator   = SentenceGenerator()
         self.target_text = ""
         self.user_input  = ""
-        self.engine: Optional[TypingEngine]  = None
+        self.engine: TypingEngine | None  = None
         self.timer       = TimerService(duration_seconds=60)
-        self.stats_tracker: Optional[StatsTracker] = None
+        self.stats_tracker: StatsTracker | None = None
 
         self.session_active  = False
         self._elapsed:       float = 0.0

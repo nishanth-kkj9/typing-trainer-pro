@@ -10,8 +10,8 @@ a full recalculation independently.
 
 from PySide6.QtCore import QObject, Signal
 
-from typing_trainer.core.typing_engine import CharStatus, TypingEngine
 from typing_trainer.core.stats_calculator import StatsCalculator
+from typing_trainer.core.typing_engine import CharStatus, TypingEngine
 
 
 class StatsTracker(QObject):

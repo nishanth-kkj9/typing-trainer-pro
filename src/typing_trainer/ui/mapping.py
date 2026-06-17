@@ -5,10 +5,9 @@ Pure data module: no Qt imports.  Every other UI module imports from
 here so finger assignments, colours, and layout are defined in one place.
 """
 
-from typing import Dict, List, Optional, Set, Tuple
 
 # ── Finger colours ────────────────────────────────────────────────────────────
-FINGER_COLORS: Dict[str, str] = {
+FINGER_COLORS: dict[str, str] = {
     "Left Pinky":   "#9b59b6",
     "Left Ring":    "#3498db",
     "Left Middle":  "#2ecc71",
@@ -22,7 +21,7 @@ FINGER_COLORS: Dict[str, str] = {
 }
 
 # ── Home key for each finger (resting position) ───────────────────────────────
-HOME_KEYS: Dict[str, str] = {
+HOME_KEYS: dict[str, str] = {
     "Left Pinky":   "A",
     "Left Ring":    "S",
     "Left Middle":  "D",
@@ -36,14 +35,14 @@ HOME_KEYS: Dict[str, str] = {
 }
 
 # ── Ordered list of all finger names ──────────────────────────────────────────
-FINGER_ORDER: List[str] = [
+FINGER_ORDER: list[str] = [
     "Left Pinky", "Left Ring", "Left Middle", "Left Index",
     "Right Index", "Right Middle", "Right Ring", "Right Pinky",
     "Left Thumb", "Right Thumb",
 ]
 
 # ── Key → finger mapping (keys stored uppercase for lookup) ───────────────────
-KEY_TO_FINGER: Dict[str, str] = {
+KEY_TO_FINGER: dict[str, str] = {
     # Number row
     "`": "Left Pinky",  "1": "Left Pinky",
     "2": "Left Ring",   "3": "Left Middle",
@@ -84,13 +83,13 @@ KEY_TO_FINGER: Dict[str, str] = {
 }
 
 # ── Home-row visual highlight set ─────────────────────────────────────────────
-HOME_ROW_KEYS: Set[str] = {"A", "S", "D", "F", "J", "K", "L", ";"}
+HOME_ROW_KEYS: set[str] = {"A", "S", "D", "F", "J", "K", "L", ";"}
 
 # ── Guide-bump keys (F and J have physical bumps on real keyboards) ───────────
-GUIDE_BUMP_KEYS: Set[str] = {"F", "J"}
+GUIDE_BUMP_KEYS: set[str] = {"F", "J"}
 
 # ── Full keyboard row layout ──────────────────────────────────────────────────
-ROWS: List[List[str]] = [
+ROWS: list[list[str]] = [
     ["`","1","2","3","4","5","6","7","8","9","0","-","=","Backspace"],
     ["Tab","Q","W","E","R","T","Y","U","I","O","P","[","]","\\"],
     ["Caps","A","S","D","F","G","H","J","K","L",";","'","Enter"],
@@ -99,16 +98,16 @@ ROWS: List[List[str]] = [
 ]
 
 # ── Shift character maps ───────────────────────────────────────────────────────
-SHIFT_MAP: Dict[str, str] = {
+SHIFT_MAP: dict[str, str] = {
     "`": "~",  "1": "!", "2": "@", "3": "#", "4": "$", "5": "%",
     "6": "^",  "7": "&", "8": "*", "9": "(", "0": ")", "-": "_",
     "=": "+",  "[": "{", "]": "}", "\\": "|", ";": ":",
     "'": '"',  ",": "<", ".": ">", "/": "?",
 }
-UNSHIFT_MAP: Dict[str, str] = {v: k for k, v in SHIFT_MAP.items()}
+UNSHIFT_MAP: dict[str, str] = {v: k for k, v in SHIFT_MAP.items()}
 
 # ── Finger band abbreviations for QSS property matching ──────────────────────
-FINGER_BAND: Dict[str, str] = {
+FINGER_BAND: dict[str, str] = {
     "Left Pinky":   "lp",
     "Left Ring":    "lr",
     "Left Middle":  "lm",
@@ -122,7 +121,7 @@ FINGER_BAND: Dict[str, str] = {
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def get_finger(char: str) -> Tuple[Optional[str], Optional[str]]:
+def get_finger(char: str) -> tuple[str | None, str | None]:
     """Return (finger_name, hex_color) for a typed character, or (None, None)."""
     if not char:
         return None, None
@@ -135,7 +134,7 @@ def get_finger(char: str) -> Tuple[Optional[str], Optional[str]]:
     return name, FINGER_COLORS.get(name)
 
 
-def resolve_key_id(char: str) -> Optional[str]:
+def resolve_key_id(char: str) -> str | None:
     """
     Map a typed character to the button key_id used in ROWS.
     Returns uppercase single-char for letter/number/symbol keys,

@@ -5,14 +5,18 @@ A professional desktop typing trainer built with PySide6 (Qt for Python).
 ## Features
 
 - **Animated 10-finger overlay** — correct finger slides to target key, then returns home
-- **Real-time stats** — live WPM, accuracy, error count, best WPM, and mini sparkline
-- **Countdown timer** — 15s / 30s / 1min / 2min — drift-free via `QElapsedTimer`
-- **Difficulty levels** — Easy / Medium / Hard sentence generation (no external files)
+- **Real-time stats** — live WPM, CPM, net WPM, accuracy, error count, consistency, best WPM, and mini sparkline
+- **Countdown timer** — 15s / 30s / 1min / 2min — drift-free via `QElapsedTimer`, with pause/resume support
+- **Difficulty levels** — Easy / Medium / Hard sentence generation with expanded word pools and punctuation
 - **Custom text** — paste any text via dialog
 - **Practice modes** — Beginner (full hints), Intermediate (key hints only), Advanced (no hints)
 - **Session history** — last 5 sessions in compact table
-- **Keyboard shortcuts** — Space/Enter = Start · Esc = Reset · Tab = Next sentence
+- **Keyboard shortcuts** — Space/Enter = Start, Esc = Reset, Tab = Next sentence
 - **Slim notification strip** — replaces intrusive warning banner
+- **Persistent storage** — SQLite via SQLModel for sessions, users, and per-key statistics
+- **Configurable settings** — TOML-backed persistent config for difficulty, theme, timer, sound, animations
+- **Structured logging** — structlog with rotating file handler
+- **Comprehensive error handling** — custom exception hierarchy with global crash dialog
 
 ## Installation
 
@@ -42,8 +46,7 @@ python src/typing_trainer/main.py
 pip install pyinstaller
 python -m PyInstaller --name "TypingTrainerPro" --windowed --onefile \
   --add-data "src/typing_trainer/ui/styles.qss;typing_trainer/ui" \
-  --add-data "src/typing_trainer/core;typing_trainer/core" \
-  --add-data "src/typing_trainer/services;typing_trainer/services" \
+  --add-data "src/typing_trainer/config/defaults.toml;typing_trainer/config" \
   src/typing_trainer/main.py
 ```
 
@@ -56,46 +59,74 @@ typing_trainer/
 ├── src/
 │   └── typing_trainer/
 │       ├── __init__.py
-│       ├── main.py                 # Entry point
-│       ├── core/                   # Pure-Python logic (no Qt)
+│       ├── __main__.py
+│       ├── main.py                  # App bootstrap, exception handler
+│       ├── config/                  # Pydantic-based settings (persistent TOML)
 │       │   ├── __init__.py
-│       │   ├── typing_engine.py    # Character-level diff
-│       │   ├── stats_calculator.py # WPM / accuracy formulas
-│       │   └── sentence_generator.py
-│       ├── services/               # Qt-dependent services
+│       │   ├── defaults.toml
+│       │   └── settings.py
+│       ├── core/                    # Pure-Python business logic (no Qt)
 │       │   ├── __init__.py
-│       │   ├── timer_service.py    # Drift-free countdown
-│       │   └── stats_tracker.py    # Real-time stats aggregator
-│       └── ui/                     # All widgets & styles
+│       │   ├── typing_engine.py     # Character-level diff with backspace/case support
+│       │   ├── stats_calculator.py  # WPM/CPM/accuracy/consistency/error rates
+│       │   └── sentence_generator.py# Template-based generation with topics & symbols
+│       ├── services/                # Qt-dependent services
+│       │   ├── __init__.py
+│       │   ├── timer_service.py     # Drift-free countdown with pause/resume
+│       │   └── stats_tracker.py     # Real-time stats aggregator (signals)
+│       ├── storage/                 # Persistence layer (SQLite + SQLModel)
+│       │   ├── __init__.py
+│       │   ├── database.py
+│       │   ├── models.py
+│       │   └── repositories.py
+│       ├── exceptions.py            # Custom exception hierarchy
+│       ├── logging_setup.py         # Structured logging setup
+│       ├── lessons/                 # Structured typing curriculum
+│       │   └── data/
+│       └── ui/                      # All Qt widgets
 │           ├── __init__.py
-│           ├── main_window.py      # MainWindow — central controller
-│           ├── keyboard_widget.py  # VirtualKeyboard + FingerOverlay
-│           ├── finger_widget.py    # Animated hand overlay
-│           ├── mapping.py          # Key→finger data, colours, layouts
-│           └── styles.qss          # Dark blue/purple theme
-├── tests/                          # Unit tests
-├── docs/                           # Documentation
-├── assets/                         # Icons, images
-├── scripts/                        # Build/deploy scripts
+│           ├── main_window.py       # Central controller
+│           ├── keyboard_widget.py   # Virtual QWERTY keyboard
+│           ├── mapping.py           # Key->finger data (pure data)
+│           └── styles.qss           # Dark blue/purple theme
+├── tests/                           # Test suite (126+ tests)
+│   ├── __init__.py
+│   ├── unit/                        # Unit tests for core & services
+│   ├── integration/                 # Integration tests
+│   └── fixtures/                    # Test fixtures
+├── docs/                            # Documentation
+│   ├── architecture.md
+│   └── contributing.md
+├── assets/                          # Icons, images, themes
+├── scripts/                         # Build/deploy scripts
+├── .github/workflows/               # CI/CD (lint, test, build, release)
 ├── pyproject.toml
 ├── requirements.txt
-├── .gitignore
 └── LICENSE
 ```
 
-## Finger Map
+## Running Tests
 
-| Finger | Keys |
-|--------|------|
-| Left Pinky | ` 1 Q A Z Tab Caps LShift |
-| Left Ring | 2 W S X |
-| Left Middle | 3 E D C |
-| Left Index | 4 5 R T F G V B |
-| Right Index | 6 7 Y U H J N M |
-| Right Middle | 8 I K , |
-| Right Ring | 9 O L . |
-| Right Pinky | 0 - = P [ ] \ ; ' / Enter Backspace RShift |
-| Both Thumbs | Space |
+```bash
+# All tests
+python -m pytest
+
+# With coverage
+python -m pytest --cov=typing_trainer --cov-report=term-missing
+
+# Specific test file
+python -m pytest tests/unit/test_typing_engine.py -v
+```
+
+## Code Quality
+
+```bash
+# Lint
+python -m ruff check
+
+# Type check
+python -m mypy src/typing_trainer
+```
 
 ## Requirements
 

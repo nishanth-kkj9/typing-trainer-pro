@@ -14,21 +14,29 @@ Public API used by MainWindow
 """
 
 from __future__ import annotations
-from typing import Dict, Optional, Set
 
-from PySide6.QtCore import Qt, Signal, QTimer, QSize, QPointF, QPoint
+from PySide6.QtCore import QPoint, QPointF, QSize, QTimer, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy,
+    QHBoxLayout,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
 from typing_trainer.ui.mapping import (
-    ROWS, HOME_ROW_KEYS, GUIDE_BUMP_KEYS, KEY_TO_FINGER,
-    FINGER_COLORS, FINGER_BAND, SHIFT_MAP, UNSHIFT_MAP,
-    resolve_key_id, get_finger,
+    FINGER_BAND,
+    GUIDE_BUMP_KEYS,
+    HOME_ROW_KEYS,
+    KEY_TO_FINGER,
+    ROWS,
+    SHIFT_MAP,
+    UNSHIFT_MAP,
+    get_finger,
 )
 
 # ── Key display labels ─────────────────────────────────────────────────────────
-_DISPLAY: Dict[str, str] = {
+_DISPLAY: dict[str, str] = {
     "Backspace": "⌫",
     "Tab":       "Tab ⇥",
     "Caps":      "Caps",
@@ -46,7 +54,7 @@ _DISPLAY: Dict[str, str] = {
 }
 
 # ── Minimum key sizes ──────────────────────────────────────────────────────────
-_SIZES: Dict[str, QSize] = {
+_SIZES: dict[str, QSize] = {
     "Space":     QSize(260, 44),
     "Backspace": QSize(88,  44),
     "Tab":       QSize(76,  44),
@@ -73,16 +81,16 @@ class VirtualKeyboard(QWidget):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.key_buttons:      Dict[str, QPushButton] = {}
-        self.modifier_buttons: Dict[str, QPushButton] = {}
+        self.key_buttons:      dict[str, QPushButton] = {}
+        self.modifier_buttons: dict[str, QPushButton] = {}
         self.shift_active = False
         self.caps_lock    = False
 
-        self._highlighted:    Set[str]      = set()
-        self._feedback_key:   Optional[str] = None
-        self._expected_key:   Optional[str] = None
-        self._next_key:       Optional[str] = None
-        self._shift_hint_key: Optional[str] = None
+        self._highlighted:    set[str]      = set()
+        self._feedback_key:   str | None = None
+        self._expected_key:   str | None = None
+        self._next_key:       str | None = None
+        self._shift_hint_key: str | None = None
 
         self._feedback_timer = QTimer(self)
         self._feedback_timer.setSingleShot(True)
@@ -143,7 +151,7 @@ class VirtualKeyboard(QWidget):
 
     # ── Coordinate query ───────────────────────────────────────────────────
 
-    def get_key_center(self, key_id: str) -> Optional[QPointF]:
+    def get_key_center(self, key_id: str) -> QPointF | None:
         """Return key centre in this widget's local coordinate space."""
         btn = self.key_buttons.get(key_id)
         if btn is None:
@@ -153,8 +161,8 @@ class VirtualKeyboard(QWidget):
 
     # ── Public API ─────────────────────────────────────────────────────────
 
-    def set_target(self, char: Optional[str],
-                   next_char: Optional[str] = None,
+    def set_target(self, char: str | None,
+                   next_char: str | None = None,
                    show_highlights: bool = True) -> None:
         self._clear_expected()
 
@@ -202,7 +210,7 @@ class VirtualKeyboard(QWidget):
 
     # ── Internals ──────────────────────────────────────────────────────────
 
-    def _char_to_btn_id(self, char: str) -> Optional[str]:
+    def _char_to_btn_id(self, char: str) -> str | None:
         if not char:
             return None
         if char == " ":
@@ -289,7 +297,7 @@ class VirtualKeyboard(QWidget):
                     sb.style().unpolish(sb)
                     sb.style().polish(sb)
 
-    def _key_id_to_char(self, kid: str) -> Optional[str]:
+    def _key_id_to_char(self, kid: str) -> str | None:
         if kid == "Space":     return " "
         if kid == "Backspace": return "\b"
         if kid == "Enter":     return "\n"

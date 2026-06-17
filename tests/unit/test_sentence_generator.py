@@ -1,4 +1,5 @@
 import pytest
+
 from typing_trainer.core.sentence_generator import SentenceGenerator
 
 
@@ -35,7 +36,7 @@ class TestSentenceGenerator:
 
     def test_uniqueness(self, generator):
         sentences = {generator.generate("easy") for _ in range(5)}
-        assert len(sentences) >= 4  # at least 4 unique out of 5
+        assert len(sentences) >= 4
 
     def test_seed_reproducibility(self):
         gen1 = SentenceGenerator()
@@ -74,11 +75,11 @@ class TestSentenceGenerator:
             assert s[0].isupper()
             assert s.endswith(".")
 
-    def test_medium_sentence_ends_with_period(self, generator):
+    def test_medium_sentence_ends_with_punctuation(self, generator):
         for _ in range(10):
             s = generator.generate("medium")
             assert s[0].isupper()
-            assert s.endswith(".")
+            assert s[-1] in (".", "!", "?")
 
     def test_hard_sentence_complexity(self, generator):
         hard_words = generator.generate("hard").rstrip(".").split()
@@ -90,3 +91,29 @@ class TestSentenceGenerator:
         for _ in range(5):
             s = gen.generate("easy")
             assert isinstance(s, str)
+
+    def test_generate_with_symbols(self, generator):
+        sentence = generator.generate("medium", include_symbols=True)
+        assert isinstance(sentence, str)
+        assert len(sentence) > 0
+
+    def test_generate_hard_with_symbols(self, generator):
+        sentence = generator.generate("hard", include_symbols=True)
+        assert isinstance(sentence, str)
+        assert len(sentence) > 0
+
+    def test_generate_easy_with_symbols_ignored(self, generator):
+        sentence = generator.generate("easy", include_symbols=True)
+        assert sentence.endswith(".")
+
+    def test_empty_history(self):
+        gen = SentenceGenerator(history_size=0)
+        gen.set_seed(42)
+        s = gen.generate("easy")
+        assert isinstance(s, str)
+
+    def test_large_history(self):
+        gen = SentenceGenerator(history_size=100)
+        gen.set_seed(42)
+        s = gen.generate("medium")
+        assert isinstance(s, str)

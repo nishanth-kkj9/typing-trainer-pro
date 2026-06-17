@@ -1,5 +1,4 @@
 import pytest
-from PySide6.QtCore import QObject, Signal
 
 from typing_trainer.services.stats_tracker import StatsTracker
 
