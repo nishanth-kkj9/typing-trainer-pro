@@ -1,0 +1,10 @@
+difficulty = "medium"
+mode = "beginner"
+theme = "dark"
+timer_seconds = 60
+sound_enabled = true
+sound_volume = 0.5
+animation_speed = 1.0
+auto_next = true
+show_finger_legend = true
+last_user_id = 0

@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install pyinstaller
+
+      - name: Build executable
+        run: |
+          pyinstaller --name "TypingTrainerPro" --windowed --onefile `
+            --add-data "src/typing_trainer/ui/styles.qss;typing_trainer/ui" `
+            --add-data "src/typing_trainer/core;typing_trainer/core" `
+            --add-data "src/typing_trainer/services;typing_trainer/services" `
+            src/typing_trainer/main.py
+
+      - name: Build wheel
+        run: pip wheel --no-deps -w dist .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/TypingTrainerPro.exe
+            dist/*.whl
+          generate_release_notes: true

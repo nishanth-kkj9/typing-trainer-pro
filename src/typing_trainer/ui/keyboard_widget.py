@@ -1,16 +1,14 @@
 """
 ui/keyboard_widget.py — Virtual Keyboard Widget
 ================================================
-Builds a full QWERTY keyboard as QPushButton rows and hosts a
-FingerOverlay child widget that floats transparently on top.
+Builds a full QWERTY keyboard as QPushButton rows.
 
 Public API used by MainWindow
 -----------------------------
-  set_target(char, next_char, ...)  — highlight expected key + animate finger
+  set_target(char, next_char, ...)  — highlight expected key
   handle_feedback(char, correct)    — green/red flash
   clear_highlights()                — remove all key highlights
-  get_finger_for_char(char)         — returns (finger_name, color)
-  reset()                           — clear modifiers + snap fingers home
+  reset()                           — clear modifiers
   key_pressed  Signal(str)          — emitted when a key button is clicked
   shift_toggled Signal(bool)        — emitted on Shift toggle
 """
@@ -91,8 +89,6 @@ class VirtualKeyboard(QWidget):
         self._feedback_timer.setInterval(320)
         self._feedback_timer.timeout.connect(self._clear_feedback)
 
-        self._overlay = None   # created lazily in showEvent
-
         self._build_rows()
 
     # ── Layout ─────────────────────────────────────────────────────────────
@@ -145,26 +141,6 @@ class VirtualKeyboard(QWidget):
         btn.clicked.connect(self._on_btn_clicked)
         return btn
 
-    # ── Overlay ────────────────────────────────────────────────────────────
-
-    def _ensure_overlay(self) -> None:
-        if self._overlay is None:
-            from typing_trainer.ui.finger_widget import FingerOverlay
-            self._overlay = FingerOverlay(self, parent=self)
-        self._overlay.setGeometry(0, 0, self.width(), self.height())
-        self._overlay.raise_()
-
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
-        if self._overlay is not None:
-            self._overlay.setGeometry(0, 0, self.width(), self.height())
-            self._overlay.raise_()
-            self._overlay.refresh_positions()
-
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        QTimer.singleShot(20, self._ensure_overlay)
-
     # ── Coordinate query ───────────────────────────────────────────────────
 
     def get_key_center(self, key_id: str) -> Optional[QPointF]:
@@ -179,14 +155,10 @@ class VirtualKeyboard(QWidget):
 
     def set_target(self, char: Optional[str],
                    next_char: Optional[str] = None,
-                   show_highlights: bool = True,
-                   animate_finger:  bool = True) -> None:
-        """Highlight the expected key (and optionally the next key)."""
+                   show_highlights: bool = True) -> None:
         self._clear_expected()
 
         if not char:
-            if self._overlay:
-                self._overlay.set_active_finger(None)
             return
 
         self._expected_key   = self._char_to_btn_id(char)
@@ -200,9 +172,6 @@ class VirtualKeyboard(QWidget):
 
         if show_highlights:
             self._apply_highlights()
-
-        if animate_finger and self._overlay and char:
-            self._overlay.animate_to_key(char)
 
     def handle_feedback(self, char: str, correct: bool) -> None:
         """Flash key green (correct) or red (incorrect)."""
@@ -222,9 +191,6 @@ class VirtualKeyboard(QWidget):
         self._next_key       = None
         self._shift_hint_key = None
 
-    def get_finger_for_char(self, char: str):
-        return get_finger(char)
-
     def reset(self) -> None:
         self.shift_active = False
         self.caps_lock    = False
@@ -233,12 +199,6 @@ class VirtualKeyboard(QWidget):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
         self.clear_highlights()
-        if self._overlay:
-            self._overlay.reset_all()
-
-    def set_overlay_visible(self, visible: bool) -> None:
-        if self._overlay:
-            self._overlay.set_visible_mode(visible)
 
     # ── Internals ──────────────────────────────────────────────────────────
 

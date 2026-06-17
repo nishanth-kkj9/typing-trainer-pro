@@ -244,13 +244,6 @@ class MainWindow(QMainWindow):
         self.input_box.setObjectName("inputBox")
         root.addWidget(self.input_box)
 
-        # ── Finger hint ──────────────────────────────────────────────────────
-        self.finger_hint = QLabel("")
-        self.finger_hint.setObjectName("fingerHint")
-        self.finger_hint.setAlignment(Qt.AlignCenter)
-        self.finger_hint.setFixedHeight(20)
-        root.addWidget(self.finger_hint)
-
         # ── Notification strip ───────────────────────────────────────────────
         self.notif = QLabel("")
         self.notif.setObjectName("notifStrip")
@@ -431,12 +424,9 @@ class MainWindow(QMainWindow):
     @Slot(int)
     def _on_mode_changed(self, mode_id: int) -> None:
         self._current_mode = mode_id
-        show = (mode_id != self.MODE_ADVANCED)
         self.legend.setVisible(mode_id == self.MODE_BEGINNER)
-        self.keyboard.set_overlay_visible(show)
         if mode_id == self.MODE_ADVANCED:
             self.keyboard.clear_highlights()
-            self.finger_hint.setText("")
         else:
             self._update_expected_key()
 
@@ -488,21 +478,9 @@ class MainWindow(QMainWindow):
             exp  = self.target_text[pos]
             nxt  = self.target_text[pos + 1] if pos + 1 < len(self.target_text) else None
             show = (self._current_mode != self.MODE_ADVANCED)
-            self.keyboard.set_target(exp, nxt,
-                                     show_highlights=show,
-                                     animate_finger=show)
-            finger, colour = self.keyboard.get_finger_for_char(exp)
-            if show and finger:
-                self.finger_hint.setText(f"Use:  {finger}")
-                self.finger_hint.setStyleSheet(
-                    f"font-size:12px;font-weight:700;"
-                    f"color:{colour or '#aaa'};padding:2px;"
-                )
-            else:
-                self.finger_hint.setText("")
+            self.keyboard.set_target(exp, nxt, show_highlights=show)
         else:
             self.keyboard.set_target(None)
-            self.finger_hint.setText("")
 
     def _update_progress(self) -> None:
         if self.target_text:

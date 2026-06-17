@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.14"
+
+jobs:
+  lint:
+    name: Lint & Typecheck
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install ruff mypy types-PySide6
+
+      - name: Lint with ruff
+        run: ruff check --output-format=github
+
+      - name: Typecheck with mypy
+        run: mypy src/typing_trainer
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install pytest-cov
+
+      - name: Run tests with coverage
+        run: |
+          pytest --cov=typing_trainer --cov-report=xml --cov-report=term-missing -v
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: ${{ matrix.python-version == env.PYTHON_VERSION }}
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  build:
+    name: Build executable
+    runs-on: windows-latest
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --name "TypingTrainerPro" --windowed --onefile `
+            --add-data "src/typing_trainer/ui/styles.qss;typing_trainer/ui" `
+            --add-data "src/typing_trainer/config/defaults.toml;typing_trainer/config" `
+            --hidden-import typing_trainer.config.settings `
+            --hidden-import typing_trainer.storage.database `
+            --hidden-import typing_trainer.storage.models `
+            --hidden-import typing_trainer.storage.repositories `
+            --hidden-import typing_trainer.logging_setup `
+            --hidden-import typing_trainer.exceptions `
+            src/typing_trainer/main.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TypingTrainerPro-${{ github.sha }}
+          path: dist/TypingTrainerPro.exe
