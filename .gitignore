@@ -1,18 +1,30 @@
 ```
-# Build artifacts and distributions
-build/
-dist/
-*.spec
-
-# Python compiled files
-*.pyc
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Dependencies and virtual environments
+# Dependencies
 .venv/
 venv/
 env/
+.env
+.env.local
+.env.*
 
-# PyInstaller specific
-*.spec
+# Logs and temp files
+*.log
+*.tmp
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+dist/
+build/
+target/
 ```

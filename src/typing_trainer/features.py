@@ -21,66 +21,17 @@ from PySide6.QtGui import QIcon
 
 from sqlmodel import Field, SQLModel, select
 from typing_trainer.storage.database import get_session
+from typing_trainer.storage.feature_models import DailyGoal, Achievement, CustomWordList, Streak
 from typing_trainer.logging_setup import get_logger
 
 logger = get_logger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Models - New database tables for features
+#  Models - New database tables for features (moved to storage/feature_models.py)
 # ─────────────────────────────────────────────────────────────────────────────
-
-class DailyGoal(SQLModel, table=True):
-    """Daily typing practice goals"""
-    __tablename__ = "daily_goals"
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id")
-    date: str  # ISO format YYYY-MM-DD
-    target_wpm: int = 60
-    target_accuracy: float = 90.0
-    target_duration_minutes: int = 10
-    achieved_wpm: Optional[float] = None
-    achieved_accuracy: Optional[float] = None
-    actual_duration_minutes: Optional[float] = None
-    completed: bool = False
-
-
-class Achievement(SQLModel, table=True):
-    """Achievement/badge system"""
-    __tablename__ = "achievements"
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id")
-    badge_id: str  # e.g., "first_session", "speed_demon", "perfectionist"
-    name: str
-    description: str
-    unlocked_at: datetime
-    icon: str = "🏆"
-
-
-class CustomWordList(SQLModel, table=True):
-    """User-customized word lists"""
-    __tablename__ = "custom_word_lists"
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id")
-    name: str
-    words: str  # JSON array or comma-separated
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    is_active: bool = True
-
-
-class Streak(SQLModel, table=True):
-    """Daily practice streak tracking"""
-    __tablename__ = "streaks"
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id")
-    current_streak: int = 0
-    longest_streak: int = 0
-    last_practice_date: Optional[str] = None
-    total_practice_days: int = 0
+# Import models from feature_models to avoid redefinition
+from typing_trainer.storage.feature_models import DailyGoal, Achievement, CustomWordList, Streak  # noqa: F401
 
 
 # ─────────────────────────────────────────────────────────────────────────────

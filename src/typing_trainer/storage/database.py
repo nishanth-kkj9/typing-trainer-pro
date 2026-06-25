@@ -3,7 +3,8 @@ from pathlib import Path
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from typing_trainer.storage.models import User
-from typing_trainer.features import DailyGoal, Achievement, CustomWordList, Streak
+# Import feature models to register them with SQLModel metadata
+from typing_trainer.storage.feature_models import DailyGoal, Achievement, CustomWordList, Streak  # noqa: F401
 
 _engine = None
 
