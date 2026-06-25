@@ -1,22 +1,18 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual environments
-venv/
-env/
-ENV/
-.venv/
-
-# Distribution / packaging
-dist/
+# Build artifacts and distributions
 build/
-*.egg-info/
+dist/
 *.spec
 
-# PyInstaller
-*.manifest
+# Python compiled files
+*.pyc
+__pycache__/
+
+# Dependencies and virtual environments
+.venv/
+venv/
+env/
+
+# PyInstaller specific
 *.spec
 
 # IDE
@@ -63,3 +59,6 @@ src/typing_trainer/ui/chart_widgets.py
 tests/unit/test_chart_widgets.py
 tests/unit/test_dashboard.py
 tests/unit/test_repositories.py
+
+# Database
+typing_trainer.db
