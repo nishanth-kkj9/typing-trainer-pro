@@ -685,11 +685,17 @@ class MainWindow(QMainWindow):
         try:
             from datetime import datetime
 
+            from typing_trainer.storage.database import get_default_user_id
             from typing_trainer.storage.models import KeyStat, TrainingSession
             from typing_trainer.storage.repositories import (
                 KeyStatRepository,
                 TrainingSessionRepository,
             )
+
+            user_id = get_default_user_id()
+            if user_id is None:
+                logger.warning("No default user found, session not saved")
+                return
 
             mode_names = {0: "beginner", 1: "intermediate", 2: "advanced"}
             mode = mode_names.get(self._current_mode, "beginner")
@@ -698,6 +704,7 @@ class MainWindow(QMainWindow):
             correct = total - err
 
             ts = TrainingSession(
+                user_id=user_id,
                 started_at=datetime.now(),
                 ended_at=datetime.now(),
                 duration_seconds=self._elapsed,
@@ -728,7 +735,7 @@ class MainWindow(QMainWindow):
                 if key_stats:
                     KeyStatRepository().bulk_create(key_stats)
         except Exception as e:
-            logger.warning("Failed to save session: %s", e)
+            logger.error("Failed to save session: %s", e)
 
     def _session_finished(self) -> None:
         self.session_active = False
