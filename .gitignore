@@ -51,3 +51,15 @@ dmypy.json
 
 # Package build artifacts
 *.egg-info/
+
+# Superpowers / AI tooling
+.opencode/
+graphify-out/
+docs/superpowers/
+
+# Pre-existing files (not part of our commits)
+AGENTS.md
+src/typing_trainer/ui/chart_widgets.py
+tests/unit/test_chart_widgets.py
+tests/unit/test_dashboard.py
+tests/unit/test_repositories.py
