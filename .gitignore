@@ -1,64 +1,30 @@
-# Build artifacts and distributions
-build/
-dist/
-*.spec
-
-# Python compiled files
-*.pyc
+```
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Dependencies and virtual environments
+# Dependencies
 .venv/
 venv/
 env/
+.env
+.env.local
+.env.*
 
-# PyInstaller specific
-*.spec
+# Logs and temp files
+*.log
+*.tmp
 
-# IDE
+# Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Local config
-.env
-.env.local
-
-# Test coverage
-.coverage
-htmlcov/
-.pytest_cache/
-
-# Type checking
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Zip archives
-*.zip
-
-# Package build artifacts
-*.egg-info/
-
-# Superpowers / AI tooling
-.opencode/
-graphify-out/
-docs/superpowers/
-
-# Pre-existing files (not part of our commits)
-AGENTS.md
-src/typing_trainer/ui/chart_widgets.py
-tests/unit/test_chart_widgets.py
-tests/unit/test_dashboard.py
-tests/unit/test_repositories.py
-
-# Database
-typing_trainer.db
+# Build artifacts
+dist/
+build/
+target/
+```
