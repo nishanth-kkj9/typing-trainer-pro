@@ -3,6 +3,7 @@ from pathlib import Path
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from typing_trainer.storage.models import User
+from typing_trainer.features import DailyGoal, Achievement, CustomWordList, Streak
 
 _engine = None
 
