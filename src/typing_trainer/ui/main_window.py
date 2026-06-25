@@ -57,6 +57,13 @@ from typing_trainer.core.typing_engine import CharStatus, TypingEngine
 from typing_trainer.services.stats_tracker import StatsTracker
 from typing_trainer.services.timer_service import TimerService
 from typing_trainer.ui.keyboard_widget import VirtualKeyboard
+from typing_trainer.features import (
+    GoalService, 
+    AchievementDialog, 
+    StreakWidget, 
+    GoalProgressWidget,
+    ExportService,
+)
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -161,6 +168,12 @@ class MainWindow(QMainWindow):
         self._best_wpm:      float = 0.0
         self._session_history: list = []
         self._current_mode   = self.MODE_BEGINNER
+        
+        # New features: streak, goals, achievements
+        self._user_id = self._get_user_id()
+        self._streak_widget = None
+        self._goal_widget = None
+        self._achievements_unlocked = []
 
         self.setWindowTitle("Typing Trainer Pro")
         self.resize(1240, 980)
@@ -171,6 +184,7 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, self._enable_windows_11_native)
         self._generate_sentence("easy")
         self._refresh_history_ui()
+        self._load_streak_display()
         logger.info("MainWindow ready")
 
     # ── UI Construction ────────────────────────────────────────────────────
@@ -187,6 +201,14 @@ class MainWindow(QMainWindow):
 
         title = QLabel("⌨  Typing Trainer Pro")
         title.setObjectName("appTitle")
+
+        # Streak widget (new feature)
+        self._streak_widget = StreakWidget(0)
+        self._streak_widget.setFixedWidth(180)
+        
+        # Goal progress widget (new feature)
+        self._goal_widget = GoalProgressWidget()
+        self._goal_widget.setFixedWidth(200)
 
         diff_lbl = QLabel("Difficulty:"); diff_lbl.setObjectName("sectionLabel")
         self.difficulty_combo = QComboBox()
@@ -218,10 +240,16 @@ class MainWindow(QMainWindow):
         self.generate_btn.setFixedWidth(122)
 
         self.dashboard_btn = QPushButton("📊  Dashboard")
+        self.export_btn = QPushButton("💾 Export")
         self.dashboard_btn.setObjectName("secondaryBtn")
+        self.export_btn.setObjectName("secondaryBtn")
         self.dashboard_btn.setFixedWidth(114)
+        self.export_btn.setFixedWidth(90)
 
         hdr.addWidget(title); hdr.addStretch()
+        hdr.addWidget(self._streak_widget)
+        hdr.addWidget(self._goal_widget)
+        hdr.addSpacing(10)
         hdr.addWidget(diff_lbl); hdr.addWidget(self.difficulty_combo); hdr.addSpacing(6)
         hdr.addWidget(dur_lbl);  hdr.addWidget(self.duration_combo);   hdr.addSpacing(8)
         hdr.addWidget(mode_lbl)
@@ -231,6 +259,7 @@ class MainWindow(QMainWindow):
         hdr.addWidget(self.custom_btn)
         hdr.addWidget(self.generate_btn)
         hdr.addWidget(self.dashboard_btn)
+        hdr.addWidget(self.export_btn)
         root.addLayout(hdr)
 
         # ── Stats row ────────────────────────────────────────────────────────
@@ -406,6 +435,7 @@ class MainWindow(QMainWindow):
         self.generate_btn.clicked.connect(self._on_generate_clicked)
         self.custom_btn.clicked.connect(self._on_custom_clicked)
         self.dashboard_btn.clicked.connect(self._open_dashboard)
+        self.export_btn.clicked.connect(self._export_progress)
         self.start_btn.clicked.connect(self.start_session)
         self.reset_btn.clicked.connect(self.reset_session)
         self.next_btn.clicked.connect(self.next_sentence)
@@ -685,11 +715,17 @@ class MainWindow(QMainWindow):
         try:
             from datetime import datetime
 
+            from typing_trainer.storage.database import get_default_user_id
             from typing_trainer.storage.models import KeyStat, TrainingSession
             from typing_trainer.storage.repositories import (
                 KeyStatRepository,
                 TrainingSessionRepository,
             )
+
+            user_id = get_default_user_id()
+            if user_id is None:
+                logger.warning("No default user found, session not saved")
+                return
 
             mode_names = {0: "beginner", 1: "intermediate", 2: "advanced"}
             mode = mode_names.get(self._current_mode, "beginner")
@@ -698,6 +734,7 @@ class MainWindow(QMainWindow):
             correct = total - err
 
             ts = TrainingSession(
+                user_id=user_id,
                 started_at=datetime.now(),
                 ended_at=datetime.now(),
                 duration_seconds=self._elapsed,
@@ -728,7 +765,7 @@ class MainWindow(QMainWindow):
                 if key_stats:
                     KeyStatRepository().bulk_create(key_stats)
         except Exception as e:
-            logger.warning("Failed to save session: %s", e)
+            logger.error("Failed to save session: %s", e)
 
     def _session_finished(self) -> None:
         self.session_active = False
@@ -750,6 +787,10 @@ class MainWindow(QMainWindow):
         diff = self.difficulty_combo.currentText()
         self._add_history(wpm, acc, err, diff)
         self._save_session(wpm, acc, err, diff)
+        
+        # New features: update streak and check achievements
+        self._update_streak_after_session()
+        
         self._show_notif(
             f"✓  Done  —  {wpm} WPM  ·  {acc}% accuracy  ·  {err} errors",
             "success"
@@ -843,3 +884,69 @@ class MainWindow(QMainWindow):
             if len(cur) < len(self.target_text):
                 self.input_box.setText(cur + char)
         self.input_box.setFocus()
+
+    # ── New feature helpers ────────────────────────────────────────────────
+
+    def _get_user_id(self) -> int:
+        """Get current user ID for tracking"""
+        from typing_trainer.storage.database import get_default_user_id
+        return get_default_user_id() or 1
+
+    def _load_streak_display(self) -> None:
+        """Load and display user's current streak"""
+        if not self._user_id:
+            return
+        
+        from sqlmodel import select
+        from typing_trainer.storage.database import get_session
+        from typing_trainer.features import Streak
+        
+        session = get_session()
+        if session:
+            try:
+                streak = session.exec(select(Streak).where(Streak.user_id == self._user_id)).first()
+                if streak:
+                    self._streak_widget.update_streak(streak.current_streak)
+            except Exception as e:
+                logger.error(f"Failed to load streak: {e}")
+            finally:
+                session.close()
+
+    def _update_streak_after_session(self) -> None:
+        """Update streak after completing a session"""
+        if not self._user_id:
+            return
+        
+        new_streak = GoalService.update_streak(self._user_id)
+        self._streak_widget.update_streak(new_streak)
+        
+        # Check for achievements
+        wpm = float(self._wpm_card._val.text() or 0)
+        acc = float((self._acc_card._val.text() or "100").replace("%", ""))
+        achievements = GoalService.check_achievements(self._user_id, wpm, acc)
+        
+        if achievements:
+            dialog = AchievementDialog(achievements, self)
+            dialog.exec()
+
+    def _export_progress(self) -> None:
+        """Export session history to CSV"""
+        if not self._user_id:
+            QMessageBox.warning(self, "Export", "No user found. Cannot export.")
+            return
+        
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Progress",
+            "typing_progress.csv",
+            "CSV Files (*.csv);;All Files (*)"
+        )
+        
+        if filepath:
+            success = ExportService.export_to_csv(self._user_id, filepath)
+            if success:
+                QMessageBox.information(self, "Export Successful", f"Progress saved to:\n{filepath}")
+            else:
+                QMessageBox.critical(self, "Export Failed", "Could not export progress.")
+
+    # ── Signal connections ─────────────────────────────────────────────────
