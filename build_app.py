@@ -8,14 +8,15 @@ import sys
 import os
 
 # Get the absolute path to the project root
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.join(ROOT_DIR, 'src')
 
 PyInstaller.__main__.run([
     '--name=TypingTrainerPro',
     '--onedir',
     '--windowed',
-    '--icon=' + os.path.join(ROOT_DIR, 'assets', 'icons', 'app_icon.ico'),
+    # Icon temporarily disabled - add app_icon.ico to assets/icons/ to enable
+    # '--icon=' + os.path.join(ROOT_DIR, 'assets', 'icons', 'app_icon.ico'),
     '--add-data=' + os.path.join(SRC_DIR, 'typing_trainer', 'ui', 'styles.qss') + ':typing_trainer/ui/',
     '--add-data=' + os.path.join(SRC_DIR, 'typing_trainer', 'config', 'defaults.toml') + ':typing_trainer/config/',
     '--hidden-import=PySide6',
