@@ -15,7 +15,20 @@ Public API used by MainWindow
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, QPointF, QSize, QTimer, Signal
+import math
+import os
+import struct
+import tempfile
+import wave
+from pathlib import Path
+
+from PySide6.QtCore import QPoint, QPointF, QSize, QTimer, QUrl, Signal
+try:
+    from PySide6.QtMultimedia import QSoundEffect as _QSoundEffect
+    _HAS_SOUND = True
+except ImportError:
+    _QSoundEffect = None  # type: ignore
+    _HAS_SOUND = False
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QPushButton,
@@ -74,7 +87,7 @@ _DEFAULT_SIZE = QSize(44, 44)
 
 
 class VirtualKeyboard(QWidget):
-    """Full QWERTY keyboard with animated finger overlay."""
+    """Full QWERTY keyboard with animated finger overlay and error heatmap."""
 
     key_pressed   = Signal(str)
     shift_toggled = Signal(bool)
@@ -91,12 +104,14 @@ class VirtualKeyboard(QWidget):
         self._expected_key:   str | None = None
         self._next_key:       str | None = None
         self._shift_hint_key: str | None = None
+        self._heatmap_data:   dict[str, float] = {}   # key_id -> error rate (0-100)
 
         self._feedback_timer = QTimer(self)
         self._feedback_timer.setSingleShot(True)
         self._feedback_timer.setInterval(320)
         self._feedback_timer.timeout.connect(self._clear_feedback)
 
+        self._init_click_sound()
         self._build_rows()
 
     # ── Layout ─────────────────────────────────────────────────────────────
@@ -125,6 +140,42 @@ class VirtualKeyboard(QWidget):
 
             layout.addWidget(row_w)
 
+    # ── Heatmap API ────────────────────────────────────────────────────────
+
+    def set_heatmap(self, error_rates: dict[str, float]) -> None:
+        """
+        Update error heatmap visualization.
+        error_rates: dict mapping key_id (e.g., 'A', 'Space', '1') to error percentage (0-100).
+        """
+        self._heatmap_data = error_rates or {}
+        self._apply_heatmap()
+
+    def _apply_heatmap(self) -> None:
+        """Apply heatmap colors to keys based on error rates."""
+        for key_id, rate in self._heatmap_data.items():
+            btn = self.key_buttons.get(key_id)
+            if not btn:
+                continue
+            # Map 0-100% to a color gradient: green (0%) -> yellow (50%) -> red (100%)
+            if rate <= 0:
+                btn.setProperty("heatLevel", "none")
+            elif rate <= 20:
+                btn.setProperty("heatLevel", "low")
+            elif rate <= 50:
+                btn.setProperty("heatLevel", "medium")
+            else:
+                btn.setProperty("heatLevel", "high")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
+    def clear_heatmap(self) -> None:
+        """Remove all heatmap styling."""
+        self._heatmap_data = {}
+        for btn in self.key_buttons.values():
+            btn.setProperty("heatLevel", "none")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
     def _make_button(self, kid: str) -> QPushButton:
         label = _DISPLAY.get(kid, kid)
         if kid in GUIDE_BUMP_KEYS:
@@ -148,6 +199,43 @@ class VirtualKeyboard(QWidget):
 
         btn.clicked.connect(self._on_btn_clicked)
         return btn
+
+    # ── Click sound ────────────────────────────────────────────────────────
+
+    def _generate_click_wav(self) -> bytes:
+        sample_rate = 22050
+        duration = 0.04
+        num_samples = int(sample_rate * duration)
+        buf = bytearray()
+        for i in range(num_samples):
+            t = i / sample_rate
+            envelope = math.exp(-t * 100)
+            value = int((math.sin(2 * math.pi * 1200 * t) * 0.6 +
+                         math.sin(2 * math.pi * 2400 * t) * 0.4) * envelope * 32767 * 0.25)
+            value = max(-32768, min(32767, value))
+            buf.extend(struct.pack('<h', value))
+        return bytes(buf)
+
+    def _init_click_sound(self) -> None:
+        self._click_sound = None
+        try:
+            wav_path = Path(tempfile.gettempdir()) / "typing_trainer_click.wav"
+            if not wav_path.exists():
+                wav_data = self._generate_click_wav()
+                with wave.open(str(wav_path), 'w') as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(22050)
+                    wf.writeframes(wav_data)
+            self._click_sound = _QSoundEffect(self)
+            self._click_sound.setSource(QUrl.fromLocalFile(str(wav_path)))
+            self._click_sound.setVolume(0.4)
+        except Exception:
+            pass
+
+    def play_click(self) -> None:
+        if self._click_sound and not self._click_sound.isPlaying():
+            self._click_sound.play()
 
     # ── Coordinate query ───────────────────────────────────────────────────
 
@@ -268,7 +356,8 @@ class VirtualKeyboard(QWidget):
         if not kid:
             return
 
-        # Modifier toggles
+        self.play_click()
+
         if kid in ("LShift", "RShift"):
             self.shift_active = not self.shift_active
             self.shift_toggled.emit(self.shift_active)

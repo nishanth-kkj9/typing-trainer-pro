@@ -20,10 +20,11 @@ Features
 """
 
 import logging
+import sys
 from collections import deque
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import QTimer, Qt, Slot
 from PySide6.QtGui import (
     QColor,
     QFontDatabase,
@@ -59,6 +60,16 @@ from typing_trainer.ui.keyboard_widget import VirtualKeyboard
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
+
+
+def _is_windows_11() -> bool:
+    if sys.platform != "win32":
+        return False
+    try:
+        ver = sys.getwindowsversion()
+        return ver.build >= 22000
+    except Exception:
+        return False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -156,6 +167,8 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._apply_styles()
         self._connect_signals()
+        if _is_windows_11():
+            QTimer.singleShot(0, self._enable_windows_11_native)
         self._generate_sentence("easy")
         self._refresh_history_ui()
         logger.info("MainWindow ready")
@@ -204,6 +217,10 @@ class MainWindow(QMainWindow):
         self.custom_btn.setFixedWidth(114)
         self.generate_btn.setFixedWidth(122)
 
+        self.dashboard_btn = QPushButton("📊  Dashboard")
+        self.dashboard_btn.setObjectName("secondaryBtn")
+        self.dashboard_btn.setFixedWidth(114)
+
         hdr.addWidget(title); hdr.addStretch()
         hdr.addWidget(diff_lbl); hdr.addWidget(self.difficulty_combo); hdr.addSpacing(6)
         hdr.addWidget(dur_lbl);  hdr.addWidget(self.duration_combo);   hdr.addSpacing(8)
@@ -213,6 +230,7 @@ class MainWindow(QMainWindow):
         hdr.addWidget(self.radio_advanced);  hdr.addSpacing(8)
         hdr.addWidget(self.custom_btn)
         hdr.addWidget(self.generate_btn)
+        hdr.addWidget(self.dashboard_btn)
         root.addLayout(hdr)
 
         # ── Stats row ────────────────────────────────────────────────────────
@@ -363,6 +381,23 @@ class MainWindow(QMainWindow):
         if p.exists():
             self.setStyleSheet(p.read_text(encoding="utf-8"))
 
+    # ── Windows 11 native ──────────────────────────────────────────────────
+
+    def _enable_windows_11_native(self) -> None:
+        try:
+            import ctypes
+            hwnd = int(self.winId())
+            value = ctypes.c_int(1)
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd, 1029, ctypes.byref(value), ctypes.sizeof(value)
+            )
+            value = ctypes.c_int(1)
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd, 20, ctypes.byref(value), ctypes.sizeof(value)
+            )
+        except Exception:
+            pass
+
     # ── Signal wiring ──────────────────────────────────────────────────────
 
     def _connect_signals(self) -> None:
@@ -370,6 +405,7 @@ class MainWindow(QMainWindow):
         self.duration_combo.currentTextChanged.connect(self._on_duration_changed)
         self.generate_btn.clicked.connect(self._on_generate_clicked)
         self.custom_btn.clicked.connect(self._on_custom_clicked)
+        self.dashboard_btn.clicked.connect(self._open_dashboard)
         self.start_btn.clicked.connect(self.start_session)
         self.reset_btn.clicked.connect(self.reset_session)
         self.next_btn.clicked.connect(self.next_sentence)
@@ -423,6 +459,14 @@ class MainWindow(QMainWindow):
                 self.user_input = ""
                 self._refresh_display()
                 self._update_expected_key()
+
+    @Slot()
+    def _open_dashboard(self) -> None:
+        from typing_trainer.ui.dashboard import DashboardWindow
+        self._dashboard_window = DashboardWindow(self)
+        self._dashboard_window.show()
+        if _is_windows_11():
+            QTimer.singleShot(0, self._dashboard_window._enable_windows_11_native)
 
     @Slot(str)
     def _on_difficulty_changed(self, _: str) -> None:
@@ -626,6 +670,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(0)
         self._hide_notif()
         self._sparkline.clear()
+        self.keyboard.clear_heatmap()
 
         dur = self.timer.duration
         self.timer_label.setText(f"{dur//60:02d}:{dur%60:02d}")
@@ -635,6 +680,55 @@ class MainWindow(QMainWindow):
         self._set_stat(self._err_card,  "0")
         self.keyboard.clear_highlights()
         logger.info("Session reset")
+
+    def _save_session(self, wpm: float, acc: float, err: int, diff: str) -> None:
+        try:
+            from datetime import datetime
+
+            from typing_trainer.storage.models import KeyStat, TrainingSession
+            from typing_trainer.storage.repositories import (
+                KeyStatRepository,
+                TrainingSessionRepository,
+            )
+
+            mode_names = {0: "beginner", 1: "intermediate", 2: "advanced"}
+            mode = mode_names.get(self._current_mode, "beginner")
+
+            total = len(self.target_text)
+            correct = total - err
+
+            ts = TrainingSession(
+                started_at=datetime.now(),
+                ended_at=datetime.now(),
+                duration_seconds=self._elapsed,
+                target_text_hash="",
+                difficulty=diff,
+                mode=mode,
+                wpm=round(wpm, 1),
+                accuracy=round(acc, 1),
+                errors=err,
+                correct=correct,
+                xp_earned=max(0, int(wpm * correct / max(total, 1))),
+            )
+            ts_repo = TrainingSessionRepository()
+            saved = ts_repo.create(ts)
+
+            if self.engine:
+                error_rates = self.engine.get_error_rate_per_key()
+                key_stats = [
+                    KeyStat(
+                        session_id=saved.id,
+                        key_char=key,
+                        correct_count=int(total * (100 - rate) / 100) if rate else total,
+                        error_count=int(total * rate / 100) if rate else 0,
+                        avg_latency_ms=0.0,
+                    )
+                    for key, rate in error_rates.items()
+                ]
+                if key_stats:
+                    KeyStatRepository().bulk_create(key_stats)
+        except Exception as e:
+            logger.warning("Failed to save session: %s", e)
 
     def _session_finished(self) -> None:
         self.session_active = False
@@ -655,6 +749,7 @@ class MainWindow(QMainWindow):
         err  = int(self._err_card._val.text() or 0)
         diff = self.difficulty_combo.currentText()
         self._add_history(wpm, acc, err, diff)
+        self._save_session(wpm, acc, err, diff)
         self._show_notif(
             f"✓  Done  —  {wpm} WPM  ·  {acc}% accuracy  ·  {err} errors",
             "success"
@@ -699,6 +794,8 @@ class MainWindow(QMainWindow):
         prev_len        = len(self.user_input)
         self.user_input = text
         self._refresh_display()
+        if len(text) != prev_len:
+            self.keyboard.play_click()
 
         # Per-keystroke keyboard feedback
         if len(text) > prev_len:
@@ -728,6 +825,10 @@ class MainWindow(QMainWindow):
         if wpm > self._best_wpm:
             self._best_wpm = wpm
             self._set_stat(self._best_card, str(self._best_wpm))
+
+        # Update error heatmap on virtual keyboard
+        if "error_rates_per_key" in stats:
+            self.keyboard.set_heatmap(stats["error_rates_per_key"])
 
     # ── Virtual keyboard clicks ────────────────────────────────────────────
 
